@@ -7,7 +7,6 @@ import os
 import yaml
 
 #https://sumo.dlr.de/pydoc/traci._vehicle.html
-# traci.start(["sumo-gui", "-c", "data_collection\sumo_circuler_net\demo.sumocfg"])
 
 
 def get_arg_parser():
@@ -47,18 +46,40 @@ def get_vehicle_attr_dict_list(vehicle_types, num_vehicles=50, num_lanes = 3):
             ego_vehicle = {'id':'ego', 'typeID':'ego', 'max_speed':"", 'ic_speed_gain':"", 'pos':pos, 'lane':str(np.random.randint(0,num_lanes))}
             vehicle_attr_list.append(ego_vehicle)
 
-        print(vehicle_attr_list[-1])
+        # print(vehicle_attr_list[-1])
 
     return vehicle_attr_list
 
 
-def run_episode(vehicle_attr_list):
+def collect_step_data(d_max):
 
+    vehicle_list = []
+    if 'ego' in traci.vehicle.getIDList():
+        ego_pos = np.array(traci.vehicle.getPosition('ego'))
+        ego_speed = traci.vehicle.getSpeed('ego')
+        ego_lane = traci.vehicle.getLaneID('ego')
+        vehicle_list.append(['ego', ego_pos, ego_speed, ego_lane, 0])
+
+        for vehicle_id in traci.vehicle.getIDList():
+            vehicle_pos = np.array(traci.vehicle.getPosition(vehicle_id))
+            vehicle_speed = traci.vehicle.getSpeed(vehicle_id)
+            vehicle_lane = traci.vehicle.getLaneID(vehicle_id)
+
+            rel_dis = np.sqrt(np.sum(np.power(vehicle_pos - ego_pos, 2)))
+
+            if rel_dis<d_max and not(vehicle_id=="ego"):
+                vehicle_list.append([vehicle_id, vehicle_pos, vehicle_speed, vehicle_lane, rel_dis])
+
+    return vehicle_list
+
+
+def run_episode(vehicle_attr_list):
+    episode_data = []
     i = 0
     while traci.simulation.getMinExpectedNumber() > 0:
-        print(i)
+        
         traci.simulationStep()
-        time.sleep(0.1)
+        # time.sleep(0.00000001)
         
         
         if i<len(vehicle_attr_list):
@@ -72,7 +93,15 @@ def run_episode(vehicle_attr_list):
                 traci.vehicle.setParameter(v_param['id'], tc.LCA_SPEEDGAIN, v_param['ic_speed_gain']) # set the icSpeedGain of the new vehicle
         i = i+1
 
+    
+        vehicle_list = collect_step_data(d_max = 30)
+        if len(vehicle_list)>0:
+            episode_data.append(vehicle_list)
+        
+        if len(episode_data)>1 and len(vehicle_list)==0:
+            break
 
+    return np.array(episode_data, dtype=object)
 
 
 
@@ -83,48 +112,22 @@ if __name__=="__main__":
     args = arg_parser.parse_args()
     # Configuration file
     conf_file = args.conf_file
+    num_episodes = 1
 
 
+    dataset = []
+    for epi in range(num_episodes):
 
-    traci.start(["sumo", "-c", "data_collection\sumo_circuler_net\circle_env.sumocfg"])
-    vehicle_types = traci.vehicletype.getIDList()
-    vehicle_attr_list = get_vehicle_attr_dict_list(vehicle_types, num_vehicles=100)
-    traci.close()
-    traci.start(["sumo-gui", "-c", "data_collection\sumo_circuler_net\circle_env.sumocfg"])
+        print(f'episode {epi}')
+        traci.start(["sumo-gui", "-c", "data_collection/sumo_circuler_net/circle_env.sumocfg"])
+    
+        vehicle_types = traci.vehicletype.getIDList()
+        vehicle_attr_list = get_vehicle_attr_dict_list(vehicle_types, num_vehicles=50)
 
-    run_episode(vehicle_attr_list)
-    traci.close()
+        episode_data = run_episode(vehicle_attr_list)
+        dataset.append(episode_data)
+        traci.close()
 
+    np.save("dataset.npy",np.array(dataset, dtype=object))
 
     print("Data collection is done!")
-
-exit()
-
-# for i in range(1):
-#     print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",i)
-#     traci.start(["sumo-gui", "-c", "data_collection\sumo_circuler_net\circle_env.sumocfg"])
-#     j = 0
-#     while traci.simulation.getMinExpectedNumber() > 0:
-#         traci.simulationStep()
-#         time.sleep(0.2)
-#         print(traci.vehicle.getIDList())
-#         for vehicle_id in traci.vehicle.getIDList():
-#             vehicle_pos = traci.vehicle.getPosition(vehicle_id)
-#             vehicle_speed = traci.vehicle.getSpeed(vehicle_id)
-#             vehicle_lane = traci.vehicle.getLaneID(vehicle_id)
-#             # print("Vehicle ID: {}, Position: {}, Speed: {}, Lane: {}".format(vehicle_id, vehicle_pos, vehicle_speed, vehicle_lane))
-    
-#         traci.vehicle.addLegacy(f"test_v{j}", "route_0",pos=0, lane=0, speed=10, typeID="car0")
-#         max_speed = np.random.uniform(10, 20) # randomly generate a new maximum speed between 10 and 20 m/s
-#         traci.vehicle.setMaxSpeed(f"test_v{j}", max_speed)
-
-#         ic_speed_gain = np.random.uniform(0, 1) # randomly generate a new icSpeedGain between 0 and 1
-#         traci.vehicle.setParameter(f"test_v{j}", tc.LCA_SPEEDGAIN, ic_speed_gain) # set the icSpeedGain of the new vehicle
-
-#         j+=1
-
-    # traci.close()
-
-    # import traci.constants as tc
-
-    # # tc.LCA_SPEEDGAIN

@@ -66,7 +66,7 @@ if __name__=="__main__":
     dataset_folder = conf['dataset']['folder']
     sensor_range = conf['env']['sensor_range']
 
-    dataset_path = os.path.join(dataset_folder, f'dataset_epi_{num_episodes}_num_vehicles{num_vehicles}_sensor_range_{sensor_range}.npy')
+    dataset_path = os.path.join(dataset_folder, f'dataset_epi_{num_episodes}_num_vehicles_{num_vehicles}_sensor_range_{sensor_range}.npy')
     os.makedirs(dataset_folder, exist_ok=True)
 
     dataset = []

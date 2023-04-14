@@ -8,32 +8,36 @@ env:
 dataset:
   env_conf_path: ./sumo_env_files/sumo_circuler_net/circle_env_data_collection.sumocfg
   folder: ./dataset
-  num_episodes: 2
+  num_episodes: 4000
   num_vehicles: 50
 
 
 # Train configuration
 train:
   dataset_path: dataset/dataset_2000_epi_d_max_80_num_vehicles_50.npy
-  result_folder: ./results
   weight_folder: ./weights
   gamma: 0.99
   lr: 0.0001
   tau: 0.0001
-  batch_size: 1000
-  epochs: 1000
+  batch_size: 20
+  n_optimization: 1000
+  resume_from: ./weights/agent_and_target_loss_0.17_epochs_1000.pt
+  model_saving_frequency: 100
 
 # Running configuration
 run:
-  weight_file: ./weights/agent_loss_0.17_epoch_999.pt
+  weight_file: ./weights/agent_and_target_loss_0.17_epochs_1000.pt
+  env_conf_path: ./sumo_env_files/sumo_circuler_net/circle_env.sumocfg
+  num_vehicles: 40
 
 # evaluation 
 
 eval:
-  runs_per_agent: 10
+  runs_per_agent: 1
   result_folder: ./results
-  weights_folder: ./weights/run_1
-  
+  weights_folder: ./weights/run_id_1681503349
+  num_vehicles: 50
+  env_conf_path: ./sumo_env_files/sumo_circuler_net/circle_env_data_collection.sumocfg
 
 
 

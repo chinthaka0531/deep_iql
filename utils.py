@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import random
+import argparse
 
 def get_vehicle_attr_dict_list(traci, vehicle_types, num_vehicles=50, num_lanes = 3):
     vehicle_types = list(vehicle_types)
@@ -90,8 +91,6 @@ def cal_action_reward(static_state, next_static_state, v_desired):
 
     reward = (1 - (np.abs(v_ego - v_desired)/v_desired)) - Plc
 
-    # print(static_state[1:3], next_static_state[1:3], action, reward)
-
     return action, reward
 
 
@@ -110,25 +109,6 @@ def transfer_weights(from_net, to_net, tau):
     to_net.load_state_dict(final_state_dict)
 
     return to_net
-
-def get_balanced_dataset(processed_dataset):
-    full_dataset_a0 = []
-    full_dataset_lane_changed = []
-    for epi in processed_dataset:
-        (dyn_s1, static_s1, dyn_s2, static_s2, action_list,reward_list)=epi
-
-        for dyn_s1s, static_s1s, dyn_s2s, static_s2s, action_s,reward_s in zip(dyn_s1, static_s1, dyn_s2, static_s2, action_list,reward_list):
-            if action_s == 0:
-                full_dataset_a0.append([dyn_s1s, static_s1s, dyn_s2s, static_s2s, action_s,reward_s])
-            else:
-                full_dataset_lane_changed.append([dyn_s1s, static_s1s, dyn_s2s, static_s2s, action_s,reward_s])
-
-    num_samples_lane_changed = len(full_dataset_lane_changed)
-    full_dataset_a0_small = full_dataset_a0[0:num_samples_lane_changed]
-
-    new_dataset = full_dataset_a0_small + full_dataset_lane_changed
-
-    return new_dataset
 
 
 def pre_processing_data(dataset):
@@ -158,6 +138,28 @@ def pre_processing_data(dataset):
     return epi_list
 
 
+def get_balanced_dataset(dataset):
+
+    processed_dataset = pre_processing_data(dataset)
+    full_dataset_a0 = []
+    full_dataset_lane_changed = []
+    for epi in processed_dataset:
+        (dyn_s1, static_s1, dyn_s2, static_s2, action_list,reward_list)=epi
+
+        for dyn_s1s, static_s1s, dyn_s2s, static_s2s, action_s,reward_s in zip(dyn_s1, static_s1, dyn_s2, static_s2, action_list,reward_list):
+            if action_s == 0:
+                full_dataset_a0.append([dyn_s1s, static_s1s, dyn_s2s, static_s2s, action_s,reward_s])
+            else:
+                full_dataset_lane_changed.append([dyn_s1s, static_s1s, dyn_s2s, static_s2s, action_s,reward_s])
+
+    num_samples_lane_changed = len(full_dataset_lane_changed)
+    full_dataset_a0_small = full_dataset_a0[0:num_samples_lane_changed]
+
+    new_dataset = full_dataset_a0_small + full_dataset_lane_changed
+
+    return new_dataset
+
+
 def sample_batch(new_dataset, batch_size):
     sample_batch = random.sample(new_dataset,batch_size)
     dyn_s1, static_s1, dyn_s2, static_s2, action_list, reward_list = [],[],[],[],[],[]
@@ -171,4 +173,6 @@ def sample_batch(new_dataset, batch_size):
     
     return dyn_s1, torch.Tensor(static_s1), dyn_s2, torch.Tensor(static_s2), torch.Tensor(action_list), torch.Tensor(reward_list)
         
+
+
 

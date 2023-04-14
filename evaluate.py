@@ -7,6 +7,9 @@ from utils import collect_step_data, get_vehicle_attr_dict_list
 from networks.nets import Agent, Phi, Q, Rho
 import argparse
 import yaml
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
 
 
 def get_arg_parser():
@@ -66,7 +69,7 @@ def test_agent(agent, vehicle_attr_list, d_max):
             
             prediction = agent.forward(dyn_state, static_state).detach().cpu().numpy()[0]
             
-            thresh = 0.7 # Confidance thresh
+            thresh = 0.6 # Confidance thresh
             if prediction.max()<thresh:
                 a = 1
             else:
@@ -76,13 +79,13 @@ def test_agent(agent, vehicle_attr_list, d_max):
             
             target_lane_idx = lane_idx + (a-1) 
 
-            print("action: ", A[a])
+            # print("action: ", A[a])
             # print(prediction, "action: ", A[a])
             
             if target_lane_idx<3 and target_lane_idx>=0:
                 traci.vehicle.changeLane('ego', target_lane_idx, duration=10)
             
-            reward = get_reward(a, v_ego, v_desired)
+            reward = get_reward(a, v_ego, v_desired=24)
             reward_list.append(reward)
         
     epi_return = sum(reward_list)
@@ -100,18 +103,50 @@ if __name__=="__main__":
     # Configurations
 
     sensor_range = conf['env']['sensor_range']
-    weight_file = conf['run']['weight_file']
-    env_conf_path = conf['run']['env_conf_path']
-    num_vehicles = conf['run']['num_vehicles']
+    weight_folder = conf['eval']['weights_folder']
+    env_conf_path = conf['eval']['env_conf_path']
+    num_vehicles = conf['eval']['num_vehicles']
+    runs_per_agent = conf['eval']['runs_per_agent']
 
-    agent = torch.load(weight_file)[0]
-    A = ['right','keep_lane','left']
+    if not(os.path.exists(weight_folder)):
+        print("weights_folder not found.")
+        exit()
 
-    traci.start(["sumo-gui", "-c", env_conf_path])
+    file_list = os.listdir(weight_folder)
+    file_list = [file for file in file_list if file.endswith('.pt')]
+    file_list.sort()
 
-    vehicle_types = traci.vehicletype.getIDList()
-    vehicle_attr_list = get_vehicle_attr_dict_list(traci, vehicle_types, num_vehicles=num_vehicles)
+    return_history = []
+    for weight_file_name in file_list:
+        weight_file = os.path.join(weight_folder, weight_file_name)
+        op_num = int(weight_file_name.split("_")[1])
+        return_list = []
+        for n in range(runs_per_agent):
+            agent = torch.load('weights/agent_and_target_loss_0.17_epochs_1000.pt')[0]
+            # agent = Agent()
+            A = ['right','keep_lane','left']
 
-    epi_return, reward_list = test_agent(agent, vehicle_attr_list, d_max=sensor_range)
-    print("Return: ", epi_return)
-    exit()
+            traci.start(["sumo", "-c", env_conf_path])
+
+            vehicle_types = traci.vehicletype.getIDList()
+            vehicle_attr_list = get_vehicle_attr_dict_list(traci, vehicle_types, num_vehicles=num_vehicles)
+
+            epi_return, reward_list = test_agent(agent, vehicle_attr_list, d_max=sensor_range)
+            return_list.append([n, epi_return])
+            traci.close()
+    
+        
+        print(weight_file_name," -> ",f"Average Return for {runs_per_agent} runs: ", np.mean(return_list), " | std: ", np.std(return_list))
+        return_history.append([op_num, np.mean(return_list), np.std(return_list)])
+    
+    # Saving history and plots
+    csv_name = os.path.join(weight_folder, 'reward_history.csv')
+    plot_name = os.path.join(weight_folder, 'reward_history.png')
+    df = pd.DataFrame(return_history, columns=['optimization_step','mean_return', 'std_of_return'])
+    df.to_csv(csv_name)
+    # plot
+    df.plot(x='optimization_step', y='mean_return', kind='line')
+    plt.title('Reward History')
+    plt.grid()
+    plt.savefig(plot_name)
+

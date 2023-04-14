@@ -1,50 +1,39 @@
-# Environment settings
-env:
-  num_vehicles: 40
-  num_obj: 50
-  num_colours: 2
-  num_actions: 5
-  wind: 0.3
-  gamma: 0.99
+# Environment:
 
-# Dataset configuration
+env:
+  conf_path: sumo_env_files/sumo_circuler_net/circle_env.sumocfg
+  sensor_range: 80
+
+# Dataset collection configuration
 dataset:
-  dataset_path: ./dataset
-  traj_length: 8
-  num_traj: 128
+  env_conf_path: ./sumo_env_files/sumo_circuler_net/circle_env_data_collection.sumocfg
+  folder: ./dataset
+  num_episodes: 2
+  num_vehicles: 50
 
 
 # Train configuration
 train:
-  dataset_path: ./dataset
+  dataset_path: dataset/dataset_2000_epi_d_max_80_num_vehicles_50.npy
   result_folder: ./results
-
-# iavi configuration
-iavi:
+  weight_folder: ./weights
   gamma: 0.99
-  theta: 0.001
+  lr: 0.0001
+  tau: 0.0001
+  batch_size: 1000
+  epochs: 1000
 
-#iql configuration
-iql:
-  alpha_r: 0.02
-  alpha_q: 0.001
-  alpha_sh: 0.001
-  epochs: 620
+# Running configuration
+run:
+  weight_file: ./weights/agent_loss_0.17_epoch_999.pt
 
-# Eval configuration
+# evaluation 
+
 eval:
-  dataset_path: ./dataset
-  result_folders: 
-    # - ./results/iql/run_1
-    # - ./results/iql/run_2
-    # - ./results/iql/run_3
-    # - ./results/iql/run_4
-    # - ./results/iql/run_5
-    - ./results/iavi/run_1
-    # - ./results/iavi/run_2
-    # - ./results/iavi/run_3
-    # - ./results/iavi/run_4
-    # - ./results/iavi/run_5
+  runs_per_agent: 10
+  result_folder: ./results
+  weights_folder: ./weights/run_1
+  
 
 
 

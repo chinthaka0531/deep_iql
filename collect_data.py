@@ -1,10 +1,10 @@
 import traci
-import time
 import numpy as np
 import traci.constants as tc
 import argparse
 import os
 import yaml
+from utils import *
 
 #https://sumo.dlr.de/pydoc/traci._vehicle.html
 
@@ -22,70 +22,6 @@ def get_conf(conf_path):
     conf_file.close()
     return conf
 
-def get_vehicle_attr_dict_list(vehicle_types, num_vehicles=50, num_lanes = 3):
-    vehicle_types = list(vehicle_types)
-    vehicle_types.remove('ego')
-    vehicle_types = [word for word in vehicle_types if not word.isupper()]
-
-    vehicle_attr_list = []
-    v_num_ego = np.clip(int(np.random.normal(num_vehicles//2, num_vehicles//2)), 1, num_vehicles-1)
-
-    for v_id in range(num_vehicles):
-        u = np.random.randint(-5,6)
-        # v_id, typeID, max_speed, ic_speed_gain, pos, lane
-        typeID = np.random.choice(vehicle_types)
-        max_speed = traci.vehicletype.getMaxSpeed(typeID) + u
-        ic_speed_gain = np.random.randint(10,21)
-        pos = 0
-        lane = np.random.randint(0,num_lanes)
-        vehicle = {'id':str(v_id), 'typeID':typeID, 'max_speed':str(max_speed), 'ic_speed_gain':str(ic_speed_gain), 'pos':pos, 'lane':str(lane)}
-        vehicle_attr_list.append(vehicle)
-
-
-        if v_id == v_num_ego:
-            ego_vehicle = {'id':'ego', 'typeID':'ego', 'max_speed':"", 'ic_speed_gain':"", 'pos':pos, 'lane':str(np.random.randint(0,num_lanes))}
-            vehicle_attr_list.append(ego_vehicle)
-
-        # print(vehicle_attr_list[-1])
-
-    return vehicle_attr_list
-
-
-def collect_step_data(d_max):
-
-    vehicle_list = []
-    if 'ego' in traci.vehicle.getIDList():
-        ego_pos = np.array(traci.vehicle.getPosition('ego'))
-        v_ego = traci.vehicle.getSpeed('ego')
-        ego_lane = int(traci.vehicle.getLaneID('ego')[-1])
-        if ego_lane == 0:
-            left_lane_av = 1
-            right_lane_av = 0
-        elif ego_lane == 1:
-            left_lane_av = 1
-            right_lane_av = 1
-        elif ego_lane == 2:
-            left_lane_av = 0
-            right_lane_av = 1
-
-        vehicle_list.append([v_ego, left_lane_av, right_lane_av])
-
-        for vehicle_id in traci.vehicle.getIDList():
-            vehicle_pos = np.array(traci.vehicle.getPosition(vehicle_id))
-            vehicle_speed = traci.vehicle.getSpeed(vehicle_id)
-            vehicle_lane = int(traci.vehicle.getLaneID(vehicle_id)[-1])
-
-            # dr = (vehicle_pos-ego_pos)/d_max
-            dr = (traci.vehicle.getDistance(vehicle_id)-traci.vehicle.getDistance('ego'))/d_max
-            dv = (vehicle_speed-v_ego)/(v_ego+0.001)
-            dl = vehicle_lane - ego_lane
-
-            if np.abs(dr)<1 and not(vehicle_id=="ego"):
-                
-                vehicle_list.append([dv, dr, dl])
-
-    return np.array(vehicle_list)
-
 
 def run_episode(vehicle_attr_list, d_max):
     episode_data = []
@@ -93,9 +29,7 @@ def run_episode(vehicle_attr_list, d_max):
     while traci.simulation.getMinExpectedNumber() > 0:
         
         traci.simulationStep()
-        # time.sleep(0.00000001)
-        
-        
+
         if i<len(vehicle_attr_list):
             v_param = vehicle_attr_list[i]
 
@@ -106,18 +40,15 @@ def run_episode(vehicle_attr_list, d_max):
                 traci.vehicle.setMaxSpeed(v_param['id'], v_param['max_speed'])
                 traci.vehicle.setParameter(v_param['id'], tc.LCA_SPEEDGAIN, v_param['ic_speed_gain']) # set the icSpeedGain of the new vehicle
         i = i+1
-
     
-        vehicle_list = collect_step_data(d_max = d_max)
+        vehicle_list = collect_step_data(traci=traci, d_max = d_max)
         if len(vehicle_list)>0:
             episode_data.append(vehicle_list)
         
         if len(episode_data)>1 and len(vehicle_list)==0:
             break
 
-    return np.array(episode_data, dtype=object)
-
-
+    return episode_data
 
 if __name__=="__main__":
 
@@ -126,24 +57,32 @@ if __name__=="__main__":
     args = arg_parser.parse_args()
     # Configuration file
     conf_file = args.conf_file
-    num_episodes = 8000
+    conf = get_conf(conf_file)
 
+    # Configurations
+    sumo_conf_path = conf['dataset']['env_conf_path']
+    num_episodes = conf['dataset']['num_episodes']
+    num_vehicles = conf['dataset']['num_vehicles']
+    dataset_folder = conf['dataset']['folder']
+    sensor_range = conf['env']['sensor_range']
+
+    dataset_path = os.path.join(dataset_folder, f'dataset_epi_{num_episodes}_num_vehicles{num_vehicles}_sensor_range_{sensor_range}.npy')
+    os.makedirs(dataset_folder, exist_ok=True)
 
     dataset = []
     for epi in range(num_episodes):
 
-        print(f'episode {epi}')
-        traci.start(["sumo", "-c", "data_collection/sumo_circuler_net/circle_env.sumocfg"])
+        traci.start(["sumo", "-c", sumo_conf_path])
     
         vehicle_types = traci.vehicletype.getIDList()
-        vehicle_attr_list = get_vehicle_attr_dict_list(vehicle_types, num_vehicles=50)
+        vehicle_attr_list = get_vehicle_attr_dict_list(traci, vehicle_types, num_vehicles=num_vehicles)
 
-        episode_data = run_episode(vehicle_attr_list, d_max=80)
+        episode_data = run_episode(vehicle_attr_list, d_max=sensor_range)
 
-        print(f'epi length for: {episode_data.shape[0]}')
+        print(f'epi length for epi {epi}: {len(episode_data)}')
         dataset.append(episode_data)
         traci.close()
 
-    np.save("test.npy",np.array(dataset, dtype=object))
+    np.save(dataset_path, np.array(dataset, dtype=object))
 
     print("Data collection is done!")

@@ -45,7 +45,9 @@ VOC/
 !targets*.mat
 
 # Neural Network weights -----------------------------------------------------------------------------------------------
+
 *.weights
+*.npy
 *.pb
 *.onnx
 *.engine

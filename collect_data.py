@@ -144,6 +144,6 @@ if __name__=="__main__":
         dataset.append(episode_data)
         traci.close()
 
-    np.save("dataset_8000_epi_d_max_80.npy",np.array(dataset, dtype=object))
+    np.save("test.npy",np.array(dataset, dtype=object))
 
     print("Data collection is done!")

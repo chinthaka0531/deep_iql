@@ -1,6 +1,6 @@
 # Environment settings
 env:
-  grid_size: 32
+  num_vehicles: 40
   num_obj: 50
   num_colours: 2
   num_actions: 5

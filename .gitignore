@@ -11,8 +11,6 @@
 *.TIF
 *.TIFF
 *.HEIC
-*.mov
-*.MOV
 *.avi
 *.data
 *.json

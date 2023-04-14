@@ -37,7 +37,7 @@ def get_vehicle_attr_dict_list(vehicle_types, num_vehicles=50, num_lanes = 3):
         max_speed = traci.vehicletype.getMaxSpeed(typeID) + u
         ic_speed_gain = np.random.randint(10,21)
         pos = 0
-        lane = 0 #np.random.randint(0,num_lanes)
+        lane = np.random.randint(0,num_lanes)
         vehicle = {'id':str(v_id), 'typeID':typeID, 'max_speed':str(max_speed), 'ic_speed_gain':str(ic_speed_gain), 'pos':pos, 'lane':str(lane)}
         vehicle_attr_list.append(vehicle)
 
@@ -56,24 +56,38 @@ def collect_step_data(d_max):
     vehicle_list = []
     if 'ego' in traci.vehicle.getIDList():
         ego_pos = np.array(traci.vehicle.getPosition('ego'))
-        ego_speed = traci.vehicle.getSpeed('ego')
-        ego_lane = traci.vehicle.getLaneID('ego')
-        vehicle_list.append(['ego', ego_pos, ego_speed, ego_lane, 0])
+        v_ego = traci.vehicle.getSpeed('ego')
+        ego_lane = int(traci.vehicle.getLaneID('ego')[-1])
+        if ego_lane == 0:
+            left_lane_av = 1
+            right_lane_av = 0
+        elif ego_lane == 1:
+            left_lane_av = 1
+            right_lane_av = 1
+        elif ego_lane == 2:
+            left_lane_av = 0
+            right_lane_av = 1
+
+        vehicle_list.append([v_ego, left_lane_av, right_lane_av])
 
         for vehicle_id in traci.vehicle.getIDList():
             vehicle_pos = np.array(traci.vehicle.getPosition(vehicle_id))
             vehicle_speed = traci.vehicle.getSpeed(vehicle_id)
-            vehicle_lane = traci.vehicle.getLaneID(vehicle_id)
+            vehicle_lane = int(traci.vehicle.getLaneID(vehicle_id)[-1])
 
-            rel_dis = np.sqrt(np.sum(np.power(vehicle_pos - ego_pos, 2)))
+            # dr = (vehicle_pos-ego_pos)/d_max
+            dr = (traci.vehicle.getDistance(vehicle_id)-traci.vehicle.getDistance('ego'))/d_max
+            dv = (vehicle_speed-v_ego)/(v_ego+0.001)
+            dl = vehicle_lane - ego_lane
 
-            if rel_dis<d_max and not(vehicle_id=="ego"):
-                vehicle_list.append([vehicle_id, vehicle_pos, vehicle_speed, vehicle_lane, rel_dis])
+            if np.abs(dr)<1 and not(vehicle_id=="ego"):
+                
+                vehicle_list.append([dv, dr, dl])
 
-    return vehicle_list
+    return np.array(vehicle_list)
 
 
-def run_episode(vehicle_attr_list):
+def run_episode(vehicle_attr_list, d_max):
     episode_data = []
     i = 0
     while traci.simulation.getMinExpectedNumber() > 0:
@@ -94,7 +108,7 @@ def run_episode(vehicle_attr_list):
         i = i+1
 
     
-        vehicle_list = collect_step_data(d_max = 30)
+        vehicle_list = collect_step_data(d_max = d_max)
         if len(vehicle_list)>0:
             episode_data.append(vehicle_list)
         
@@ -112,22 +126,24 @@ if __name__=="__main__":
     args = arg_parser.parse_args()
     # Configuration file
     conf_file = args.conf_file
-    num_episodes = 1
+    num_episodes = 8000
 
 
     dataset = []
     for epi in range(num_episodes):
 
         print(f'episode {epi}')
-        traci.start(["sumo-gui", "-c", "data_collection/sumo_circuler_net/circle_env.sumocfg"])
+        traci.start(["sumo", "-c", "data_collection/sumo_circuler_net/circle_env.sumocfg"])
     
         vehicle_types = traci.vehicletype.getIDList()
         vehicle_attr_list = get_vehicle_attr_dict_list(vehicle_types, num_vehicles=50)
 
-        episode_data = run_episode(vehicle_attr_list)
+        episode_data = run_episode(vehicle_attr_list, d_max=80)
+
+        print(f'epi length for: {episode_data.shape[0]}')
         dataset.append(episode_data)
         traci.close()
 
-    np.save("dataset.npy",np.array(dataset, dtype=object))
+    np.save("dataset_8000_epi_d_max_80.npy",np.array(dataset, dtype=object))
 
     print("Data collection is done!")

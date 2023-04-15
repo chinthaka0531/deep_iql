@@ -2,7 +2,7 @@
     <step-length value="0.5"/>
     <input>
         <net-file value="circle.net.xml"/>
-        <additional-files value="route.rou.xml"/>
+        <additional-files value="route_data.rou.xml"/>
 
     </input>
 </configuration>

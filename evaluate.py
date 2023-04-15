@@ -88,7 +88,7 @@ def test_agent(agent, vehicle_attr_list, d_max):
             reward = get_reward(a, v_ego, v_desired=24)
             reward_list.append(reward)
         
-    epi_return = sum(reward_list)
+    epi_return = sum(reward_list)/len(reward_list)
 
     return epi_return, reward_list
 
@@ -114,7 +114,8 @@ if __name__=="__main__":
 
     file_list = os.listdir(weight_folder)
     file_list = [file for file in file_list if file.endswith('.pt')]
-    file_list.sort()
+    file_list=sorted(file_list, key=lambda x: int(x.split("_")[1]))
+    print(file_list)
 
     return_history = []
     for weight_file_name in file_list:
@@ -122,7 +123,7 @@ if __name__=="__main__":
         op_num = int(weight_file_name.split("_")[1])
         return_list = []
         for n in range(runs_per_agent):
-            agent = torch.load('weights/agent_and_target_loss_0.17_epochs_1000.pt')[0]
+            agent = torch.load(weight_file)[0]
             # agent = Agent()
             A = ['right','keep_lane','left']
 
@@ -131,13 +132,13 @@ if __name__=="__main__":
             vehicle_types = traci.vehicletype.getIDList()
             vehicle_attr_list = get_vehicle_attr_dict_list(traci, vehicle_types, num_vehicles=num_vehicles)
 
-            epi_return, reward_list = test_agent(agent, vehicle_attr_list, d_max=sensor_range)
+            epi_return, _ = test_agent(agent, vehicle_attr_list, d_max=sensor_range)
             return_list.append([n, epi_return])
             traci.close()
     
-        
-        print(weight_file_name," -> ",f"Average Return for {runs_per_agent} runs: ", np.mean(return_list), " | std: ", np.std(return_list))
-        return_history.append([op_num, np.mean(return_list), np.std(return_list)])
+        return_list = np.array(return_list)
+        print(weight_file_name," -> ",f"Average Return for {runs_per_agent} runs: ", return_list[:,1].mean(), " | std: ", return_list[:,1].std())
+        return_history.append([op_num, return_list[:,1].mean(), return_list[:,1].std()])
     
     # Saving history and plots
     csv_name = os.path.join(weight_folder, 'reward_history.csv')

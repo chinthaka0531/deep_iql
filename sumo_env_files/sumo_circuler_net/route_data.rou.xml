@@ -1,0 +1,12 @@
+<routes>
+    <vType id="car0" vClass="passenger" length="4.5" accel="2.6" decel="4.5" minGap="2" maxSpeed="24" laneChangeModel="LC2013" lcKeepRight="0" lcSpeedGain="10" lcCooperative="0" sigma="0.5" tau="0.5"/>
+    <vType id="car1" vClass="passenger" length="4.5" accel="2.6" decel="4.5" minGap="2" maxSpeed="12" laneChangeModel="LC2013" lcKeepRight="0" lcSpeedGain="15" lcCooperative="1" sigma="0.5" tau="0.5"/>
+    <vType id="car2" vClass="passenger" length="4.5" accel="2.6" decel="4.5" minGap="2" maxSpeed="18" laneChangeModel="LC2013" lcKeepRight="0" lcSpeedGain="12" lcCooperative="0.8" sigma="0.5" tau="0.5"/>
+    <vType id="car3" vClass="passenger" length="4.5" accel="2.6" decel="4.5" minGap="2" maxSpeed="21" laneChangeModel="LC2013" lcKeepRight="0" lcSpeedGain="11" lcCooperative="0.4" sigma="0.5" tau="0.5"/>
+    <vType id="ego" vClass="passenger" length="4.5" accel="5.6" decel="5.5" minGap="2" maxSpeed="50" laneChangeModel="LC2013" lcKeepRight="0" lcSpeedGain="20" lcCooperative="0" sigma="0.5" tau="0.5" color="1,0,0"/>
+
+    <route id="route_0" edges="E0 E1 E2 E3 E4 E5 E6 E7 E8" />
+
+    <vehicle id="-1" type="car0" route="route_0" depart="0"/>
+</routes>
+

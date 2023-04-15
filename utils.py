@@ -111,7 +111,7 @@ def transfer_weights(from_net, to_net, tau):
     return to_net
 
 
-def pre_processing_data(dataset):
+def pre_processing_data(dataset, v_desired = 25):
 
     epi_list = []
     for episode in dataset:
@@ -128,7 +128,7 @@ def pre_processing_data(dataset):
             next_dyn_state_list.append(torch.Tensor(episode[i+1][1:]))
             next_static_state_list.append(episode[i+1][0])
 
-            a,r = cal_action_reward(step[0], episode[i+1][0], v_desired=24)
+            a,r = cal_action_reward(step[0], episode[i+1][0], v_desired=v_desired)
             action_list.append(a)
             reward_list.append(r)
 
@@ -156,6 +156,8 @@ def get_balanced_dataset(dataset):
     full_dataset_a0_small = full_dataset_a0[0:num_samples_lane_changed]
 
     new_dataset = full_dataset_a0_small + full_dataset_lane_changed
+
+    print("number of samples after balancing:", len(new_dataset))
 
     return new_dataset
 

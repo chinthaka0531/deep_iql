@@ -63,7 +63,7 @@ if __name__=="__main__":
 
     opt = optim.Adam(agent.parameters(), lr=lr)
 
-    dataset = np.load(dataset_path, allow_pickle=True)[0:5]
+    dataset = np.load(dataset_path, allow_pickle=True)
     balanced_dataset = get_balanced_dataset(dataset)
 
     history = []

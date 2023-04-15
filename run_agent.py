@@ -29,6 +29,7 @@ def get_reward(action, v_ego, v_desired):
         Plc = 0.01
 
     reward = (1 - (np.abs(v_ego - v_desired)/v_desired)) - Plc
+
     return reward
 
 def test_agent(agent, vehicle_attr_list, d_max):
@@ -66,7 +67,7 @@ def test_agent(agent, vehicle_attr_list, d_max):
             
             prediction = agent.forward(dyn_state, static_state).detach().cpu().numpy()[0]
             
-            thresh = 0.7 # Confidance thresh
+            thresh = 0.6 # Confidance thresh
             if prediction.max()<thresh:
                 a = 1
             else:
@@ -85,7 +86,7 @@ def test_agent(agent, vehicle_attr_list, d_max):
             reward = get_reward(a, v_ego, v_desired)
             reward_list.append(reward)
         
-    epi_return = sum(reward_list)
+    epi_return = sum(reward_list)/len(reward_list)
 
     return epi_return, reward_list
 
@@ -105,6 +106,7 @@ if __name__=="__main__":
     num_vehicles = conf['run']['num_vehicles']
 
     agent = torch.load(weight_file)[0]
+
     A = ['right','keep_lane','left']
 
     traci.start(["sumo-gui", "-c", env_conf_path])

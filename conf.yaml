@@ -27,7 +27,7 @@ train:
 
 # Running configuration
 run:
-  weight_file: weights/agent_and_target_loss_0.17_epochs_1000.pt
+  weight_file: weights/run_id_1681511105/step_1600_loss_0.1017.pt
   # env_conf_path: ./sumo_env_files/sumo_circuler_net/circle_env.sumocfg
   env_conf_path: ./sumo_env_files/sumo_circuler_net/circle_env_data_collection.sumocfg
   num_vehicles: 50

@@ -83,7 +83,7 @@ def test_agent(agent, vehicle_attr_list, d_max):
             if target_lane_idx<3 and target_lane_idx>=0:
                 traci.vehicle.changeLane('ego', target_lane_idx, duration=10)
             
-            reward = get_reward(a, v_ego, v_desired)
+            reward = get_reward(a, v_ego, v_desired=25)
             reward_list.append(reward)
         
     epi_return = sum(reward_list)/len(reward_list)
